@@ -38,6 +38,7 @@ class betting_event:
 			#if there are no odds available then the average DNE
 			return None
 	def find_outliers(self):
+		#just return win odds for now
 		max_win_odds = max(self.team_1_win_odds.values())
 		max_loss_odds = max(self.team_1_lose_odds.values())
 		max_draw_odds = max(self.draw_odds.values())
