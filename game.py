@@ -14,9 +14,21 @@ class game:
 		self.when = date
 		self.result = result
 		self.odds_set = set()
+	def __eq__(self, other):
+		return self.team_1 == other.team_1 and self.team_2 == other.team_2 and \
+			self.when == other.when
+	def __hash__(self):
+		return hash(str(self))
+	def combine_odds(self, other):
+		for other_odds in other.odds_set:
+			if other_odds not in self.odds:
+				self.odds.add(other_odds)
 	def __str__(self):
+		return self.team_1 + self.team_2 + str(self.when)
+	def pretty_str(self):
 		return '{} vs. {}'.format(self.team_1, self.team_2)
 	def update_result(self, result):
 		self.result = result
 	def add_odds(self, new_odds):
-		self.odds_set.add(new_odds)
+		if new_odds.odds_offered != None:
+			self.odds_set.add(new_odds)

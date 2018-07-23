@@ -37,6 +37,18 @@ def get_int_time(timestr):
 		hour = 0
 	return hour, minute
 
+def combine_events(old_events, new_events):
+	#O(len(new_events)) where len(new_events) is expected to be small (~ <100)
+	for event_str in new_events:
+		if event_str in old_events:
+			#some of the odds may have been updated since we last checked
+			#add these new odds to the game
+			old_events[event_str].combine_odds(new_events[event_str])
+		else:
+			#we haven't seen this game before, add it to the events that will occur
+			old_events[event_str] = new_events[event_str]
+			
+
 def get_from_pickle(filename):
 	try:
 		with open(filename, 'rb') as pickle_file:
@@ -51,6 +63,11 @@ def save_to_pickle(events, filename):
 
 def get_results():
 	pass
+	
+def finish_games(events, results):
+	#update events with results
+	#move the events that have results into a new set
+	pass
 
 if __name__ == '__main__':
 	months = ['January', 'February', 'March', 'April', 'May', 'June', 'July',
@@ -61,6 +78,9 @@ if __name__ == '__main__':
 	
 	events_to_occur_pickle = 'events_to_occur.pickle'
 	occured_events_pickle = 'occured_events.pickle'
+	#events_to_occur is dictionary containing game objects that don't have a result recorded
+	#we want to occasionally pull odds from the internet to check if they have changed
+	events_to_occur = get_from_pickle(events_to_occur_pickle)
 	
 	#win: class="op-item op-spread border-bottom op-opening" data-op-moneyline = {}
 	#d: class="op-item op-spread op-opening" data-op-info='{"fullgame":"&#43;1"}' data-op-moneyline='{"fullgame":"&#43;190"}'
@@ -102,6 +122,7 @@ if __name__ == '__main__':
 		events_on_page.append(new_game)
 
 	#find all the odds offered for all the betting events on this page
+	#infers order of events from events_on_page
 	for bookie_name in bookie_names:
 		game_odds_tags = soup.find_all("div", class_ = bookie_win_class.format(bookie_name))
 		#add each bookie's odds for each game on the page
@@ -123,7 +144,17 @@ if __name__ == '__main__':
 			draw_result = 'draw'
 			events_on_page[i].add_odds(odds(bookie_name, draw_result, draw_odds, datetime_valid))
 	
-	#TODO: compare newly crawled odds to stored odds, adding them to the dataset if they
+	new_events = {str(events_on_page[i]):events_on_page[i] for i in range(len(events_on_page))}
+	
+	#compare newly scraped odds to stored odds, adding them to the dataset if they
 	#aren't present
-		
-	save_to_pickle(events_on_page, events_to_occur_pickle)
+	if events_to_occur != None:
+		combine_events(events_to_occur, new_events)
+	else:
+		events_to_occur = new_events
+	save_to_pickle(events_to_occur, events_to_occur_pickle)
+	
+
+
+
+
