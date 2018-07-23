@@ -21,8 +21,8 @@ class game:
 		return hash(str(self))
 	def combine_odds(self, other):
 		for other_odds in other.odds_set:
-			if other_odds not in self.odds:
-				self.odds.add(other_odds)
+			if other_odds not in self.odds_set:
+				self.odds_set.add(other_odds)
 	def __str__(self):
 		return self.team_1 + self.team_2 + str(self.when)
 	def pretty_str(self):

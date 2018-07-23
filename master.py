@@ -69,18 +69,15 @@ def finish_games(events, results):
 	#move the events that have results into a new set
 	pass
 
-if __name__ == '__main__':
+def pull_oddshark(url):
+	'''
+	gets the betting offers listed at an oddshark webpage
+	'''
 	months = ['January', 'February', 'March', 'April', 'May', 'June', 'July',
 		'August', 'September', 'October', 'November', 'December']
 	#use this for coverting string months into the conventional integer for that month
 	#e.g. February = 2
 	month_str_to_number = {months[i]: i+1 for i in range(len(months))}
-	
-	events_to_occur_pickle = 'events_to_occur.pickle'
-	occured_events_pickle = 'occured_events.pickle'
-	#events_to_occur is dictionary containing game objects that don't have a result recorded
-	#we want to occasionally pull odds from the internet to check if they have changed
-	events_to_occur = get_from_pickle(events_to_occur_pickle)
 	
 	#win: class="op-item op-spread border-bottom op-opening" data-op-moneyline = {}
 	#d: class="op-item op-spread op-opening" data-op-info='{"fullgame":"&#43;1"}' data-op-moneyline='{"fullgame":"&#43;190"}'
@@ -92,7 +89,6 @@ if __name__ == '__main__':
 		'caesars', '5dimes', 'westgate', 'topbet', 'sportsbetting', 'gtbets', 'betnow',
 		'skybook', 'sportbet', 'station', 'mirage', 'wynn']
 
-	url = 'https://www.oddsshark.com/soccer/mls/odds'
 	page = urllib.request.urlopen(url)
 
 	soup = BeautifulSoup(page, 'html.parser')
@@ -144,8 +140,18 @@ if __name__ == '__main__':
 			draw_result = 'draw'
 			events_on_page[i].add_odds(odds(bookie_name, draw_result, draw_odds, datetime_valid))
 	
-	new_events = {str(events_on_page[i]):events_on_page[i] for i in range(len(events_on_page))}
+	return {str(events_on_page[i]):events_on_page[i] for i in range(len(events_on_page))}
 	
+if __name__ == '__main__':
+	events_to_occur_pickle = 'events_to_occur.pickle'
+	occured_events_pickle = 'occured_events.pickle'
+	#events_to_occur is dictionary containing game objects that don't have a result recorded
+	#we want to occasionally pull odds from the internet to check if they have changed
+	events_to_occur = get_from_pickle(events_to_occur_pickle)
+	
+	url = 'https://www.oddsshark.com/soccer/mls/odds'
+	new_events = pull_oddshark(url)
+		
 	#compare newly scraped odds to stored odds, adding them to the dataset if they
 	#aren't present
 	if events_to_occur != None:
