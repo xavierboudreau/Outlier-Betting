@@ -1,3 +1,10 @@
+#TODO:
+#pull results from web
+#when a game has a result add it to a finished_games set (for analyzing returns)
+#base all game times in UTC
+#	they are currently in Eastern time but UTC would make them consistent with
+#	the timezone of the timestamp describing when an odds was valid (datetime_valid)
+
 #Author: Xavier Boudreau
 import urllib.request
 import ast
@@ -61,8 +68,19 @@ def save_to_pickle(events, filename):
 		pickle.dump(events, pickle_file)
 			
 
-def get_results():
-	pass
+def get_results_from_soccerway(url):
+	#results table tag: <table class="matches ">
+	#	row tag: <tr ...>
+	#		team 1 tag: <td class = "team team-a "> <a title = "TEAM 1 NAME">
+	#		score: <td class = "score-time score">
+	#		team 2 tag: <td class = "team team-b "> <a title = "TEAM 2 NAME"> 
+	page = urllib.request.urlopen(url)
+	
+	soup = BeautifulSoup(page, 'html.parser')
+	table_tag = soup.find("table", class_ = "matches ")
+	for row in table_tag.children:
+		print(row)
+		
 	
 def finish_games(events, results):
 	#update events with results

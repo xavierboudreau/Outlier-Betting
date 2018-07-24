@@ -12,8 +12,9 @@ I seek to answer the following questions:
 
 Tasks:
 
-* Web-crawling to find bets offered by various websites
-* Aggregate those bets into averages and find outliers
+* Web-crawling to find bets for events offered by various websites
+* Aggregate those bets into averages for events and find outliers
 	* Calculate distance from average (using percent difference or other metric)
+* Web-crawling to find actual results of events
 * Calculate and plot returns with different distance tolerances
 	* Compare to another strategy, such as random betting
