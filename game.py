@@ -1,5 +1,14 @@
 from odds import *
 
+#TODO:
+#Make another object game_key to act as hash-able type for dictionary
+#note that hash(date1) == hash(date1.toZone('UTC'))
+#this will allow to have the games go in a dictionary and to
+#return a more reasnoble string from the game class
+class game_key:
+	pass
+
+
 class game:
 	def __init__(self, team_1, team_2, date = None, result = None):
 		'''

@@ -4,7 +4,6 @@
 #when a game has a result add it to a finished_games set (for analyzing returns)
 #base all game times in UTC
 #	they are currently in Eastern time but UTC would make them consistent with
-#	the timezone of the timestamp describing when an odds was valid (datetime_valid)
 
 #Author: Xavier Boudreau
 import urllib.request
@@ -160,8 +159,7 @@ def update_results_with_soccerway(url, events):
 		team_2 = team_b_tag.find_next("a")["title"]
 		
 		#currently timestamp will not match as game is in EST and this one is in unix
-		#I need to convert the unix timestamp to UTC and set the game datetime (game.when) to
-		#UTC
+		#I need to convert the unix timestamp to UTC
 		key_str = team_1 + team_2 + unix_timestamp
 		score_str = "{} {} {}".format(team_1, score, team_2)
 		table[key_str].result = score_str
@@ -218,9 +216,13 @@ def pull_oddshark(url):
 		year = datetime_valid.year
 		if datetime_valid.month > month:
 			year += 1
-		#TODO: convert to UTC (currently EST)
-		game_start = datetime.datetime(year, month, day_of_month, hour, minute)
 		
+		#TODO: adjust the timezone to be dependent on the server's timezone instead
+		# of hardcoding New York 
+		timezone = time.tzname[time.localtime().tm_isdst]
+		NYC = pytz.timezone("America/New_York")
+		game_start = datetime.datetime(year, month, day_of_month, hour, minute)
+		game_start = NYC.localize(game_start) 
 		new_game = game(team_tags[i].text.strip(), team_tags[i+1].text.strip(), date = game_start)
 		events_on_page.append(new_game)
 
