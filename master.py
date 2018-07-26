@@ -1,4 +1,5 @@
 #TODO:
+#make datetime objects timezone aware
 #pull results from web
 #when a game has a result add it to a finished_games set (for analyzing returns)
 #base all game times in UTC
@@ -9,6 +10,7 @@
 import urllib.request
 import ast
 import datetime
+import pytz
 import time
 from bs4 import BeautifulSoup
 from game import *
@@ -125,7 +127,6 @@ def update_results_with_soccerway(url, events):
 	#		team 1 tag: <td class = "team team-a "> <a title = "TEAM 1 NAME">
 	#		score: <td class = "score-time score">
 	#		team 2 tag: <td class = "team team-b "> <a title = "TEAM 2 NAME"> 
-	unix_now = time.time()
 	
 	page = urllib.request.urlopen(url)
 	
@@ -159,7 +160,8 @@ def update_results_with_soccerway(url, events):
 		team_2 = team_b_tag.find_next("a")["title"]
 		
 		#currently timestamp will not match as game is in EST and this one is in unix
-		#I need to convert the unix timestamp to UTC or the EST to UNIX (if aware this is preferrable)
+		#I need to convert the unix timestamp to UTC and set the game datetime (game.when) to
+		#UTC
 		key_str = team_1 + team_2 + unix_timestamp
 		score_str = "{} {} {}".format(team_1, score, team_2)
 		table[key_str].result = score_str
@@ -216,6 +218,7 @@ def pull_oddshark(url):
 		year = datetime_valid.year
 		if datetime_valid.month > month:
 			year += 1
+		#TODO: convert to UTC (currently EST)
 		game_start = datetime.datetime(year, month, day_of_month, hour, minute)
 		
 		new_game = game(team_tags[i].text.strip(), team_tags[i+1].text.strip(), date = game_start)
