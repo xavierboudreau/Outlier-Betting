@@ -7,6 +7,7 @@ class game:
 		team_1: a str of a team in the game
 		team_2: a str of the other team in the game (besides team_1)
 		date: a datetime object describing the start of the game
+			TODO check if UNIX time is aware (comparable to datetime)
 		result: a str describing the result of the game 
 		'''
 		self.team_1 = team_1

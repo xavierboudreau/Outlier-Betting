@@ -69,7 +69,7 @@ def save_to_pickle(events, filename):
 		pickle.dump(events, pickle_file)
 			
 
-def get_results_from_soccerway(url):
+def print_results_from_soccerway(url):
 	#sample url: "https://us.soccerway.com/national/united-states/mls/2018/regular-season/r45738/"
 	
 	#results table tag: <table class="matches ">
@@ -113,6 +113,56 @@ def get_results_from_soccerway(url):
 		team_2 = team_b_tag.find_next("a")["title"]
 		
 		print("{} {} {}\t\t{}".format(team_1, score, team_2, unix_timestamp))
+		
+		row_tag = team_b_tag.find_next("tr")
+
+def update_results_with_soccerway(url, events):
+	#sample url: "https://us.soccerway.com/national/united-states/mls/2018/regular-season/r45738/"
+	
+	#results table tag: <table class="matches ">
+	#  <tbody>
+	#	row tag: <tr ...>
+	#		team 1 tag: <td class = "team team-a "> <a title = "TEAM 1 NAME">
+	#		score: <td class = "score-time score">
+	#		team 2 tag: <td class = "team team-b "> <a title = "TEAM 2 NAME"> 
+	unix_now = time.time()
+	
+	page = urllib.request.urlopen(url)
+	
+	soup = BeautifulSoup(page, 'html.parser')
+		
+	table_body = soup.find("table", class_ = "matches ").find_next("tbody")
+	
+	#keep track of when games were played, update when a row has a timestamp in it
+	game_date = None
+	
+	#current_tag = table_body
+	
+	
+	row_tag = table_body.find_next("tr")
+	
+	#we'll break out the loop when we fail to find more finished matches
+	#we can't use the unix timestamp because we don't have a guarantee of when
+	#the page is updated
+	while row_tag != None:
+		unix_timestamp = int(row_tag["data-timestamp"])
+		team_a_tag = row_tag.find_next("td", class_ = "team team-a ")
+		score_tag = team_a_tag.find_next("td", class_ = "score-time score")
+		
+		if score_tag == None:
+			#we didn't find another completed match so we are done
+			break
+		team_b_tag = score_tag.find_next("td", class_ = "team team-b ")
+		
+		team_1 = team_a_tag.find_next("a")["title"]
+		score = score_tag.find_next("a").text.strip()
+		team_2 = team_b_tag.find_next("a")["title"]
+		
+		#currently timestamp will not match as game is in EST and this one is in unix
+		#I need to convert the unix timestamp to UTC or the EST to UNIX (if aware this is preferrable)
+		key_str = team_1 + team_2 + unix_timestamp
+		score_str = "{} {} {}".format(team_1, score, team_2)
+		table[key_str].result = score_str
 		
 		row_tag = team_b_tag.find_next("tr")
 		
