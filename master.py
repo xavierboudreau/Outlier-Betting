@@ -1,9 +1,6 @@
 #TODO:
-#make datetime objects timezone aware
-#pull results from web
+#Complete name_standards.py so variations of a team's name are equivalent
 #when a game has a result add it to a finished_games set (for analyzing returns)
-#base all game times in UTC
-#	they are currently in Eastern time but UTC would make them consistent with
 
 #Author: Xavier Boudreau
 import urllib.request
@@ -27,6 +24,7 @@ def moneyline_to_decimal(moneyline_odds):
 		return -1/decimal_odds
 	else:
 		return decimal_odds
+		
 def get_int_time(timestr):
 	'''
 	returns the hour and minute respresented in timestr as integers
@@ -69,6 +67,12 @@ def save_to_pickle(events, filename):
 	with open(filename, 'wb+') as pickle_file:
 		pickle.dump(events, pickle_file)
 			
+def roundDateTime(dt):
+	#rounds a datetime object dt to nearest 20 minutes
+	discard = datetime.timedelta(minutes=dt.minute % 20,seconds=tm.second, microseconds=tm.microsecond)
+	dt -= discard
+	if discard >= datetime.timedelta(minutes=10):
+		dt += datetime.timedelta(minutes=20)
 
 def print_results_from_soccerway(url):
 	#sample url: "https://us.soccerway.com/national/united-states/mls/2018/regular-season/r45738/"
@@ -146,6 +150,8 @@ def update_results_with_soccerway(url, events):
 	#the page is updated
 	while row_tag != None:
 		unix_timestamp = int(row_tag["data-timestamp"])
+		game_datetime = pytz.utc.localize(datetime.datetime.fromtimestamp(unix_timestamp))
+		
 		team_a_tag = row_tag.find_next("td", class_ = "team team-a ")
 		score_tag = team_a_tag.find_next("td", class_ = "score-time score")
 		
@@ -158,19 +164,28 @@ def update_results_with_soccerway(url, events):
 		score = score_tag.find_next("a").text.strip()
 		team_2 = team_b_tag.find_next("a")["title"]
 		
-		#currently timestamp will not match as game is in EST and this one is in unix
-		#I need to convert the unix timestamp to UTC
-		key_str = team_1 + team_2 + unix_timestamp
+		#TODO convert the unix timestamp to UTC
+		# OR have all datetimes (from pulling odds and results) be rounded to nearest hour
+		#This would work better because it allows
+		#for some error in time reporting and its doubtful teams will 
+		#have a rematch immediately after their game ends
+		
+		key = game_key(team_1, team_2, game_datetime)
 		score_str = "{} {} {}".format(team_1, score, team_2)
-		table[key_str].result = score_str
+		try:
+			events[key].result = score_str
+			print("added one result!!!")
+		except KeyError:
+			print("Game not found:\n\t{}\n\tResult: {}".format(key, score_str))
 		
 		row_tag = team_b_tag.find_next("tr")
 		
-		
-	
 def finish_games(events, results):
-	#update events with results
 	#move the events that have results into a new set
+	pass
+	
+def compare_results_to_offered_odds(events):
+	#evaluate whether the bets offered for each game are winners or not
 	pass
 
 def pull_oddshark(url):
@@ -249,18 +264,24 @@ def pull_oddshark(url):
 			draw_result = 'draw'
 			events_on_page[i].add_odds(odds(bookie_name, draw_result, draw_odds, datetime_valid))
 	
-	return {str(events_on_page[i]):events_on_page[i] for i in range(len(events_on_page))}
+	return {(events_on_page[i].get_game_key()):events_on_page[i] for i in range(len(events_on_page))}
 	
 if __name__ == '__main__':
 	events_to_occur_pickle = 'events_to_occur.pickle'
 	occured_events_pickle = 'occured_events.pickle'
+	oddshark_url = 'https://www.oddsshark.com/soccer/mls/odds'
+	soccerway_url = "https://us.soccerway.com/national/united-states/mls/2018/regular-season/r45738/"
+	
 	#events_to_occur is dictionary containing game objects that don't have a result recorded
 	#we want to occasionally pull odds from the internet to check if they have changed
 	events_to_occur = get_from_pickle(events_to_occur_pickle)
 	
-	url = 'https://www.oddsshark.com/soccer/mls/odds'
-	new_events = pull_oddshark(url)
-		
+	
+	new_events = pull_oddshark(oddshark_url)
+	
+	for event in new_events:
+		print(new_events[event])
+	
 	#compare newly scraped odds to stored odds, adding them to the dataset if they
 	#aren't present
 	if events_to_occur != None:
@@ -269,7 +290,9 @@ if __name__ == '__main__':
 		events_to_occur = new_events
 	save_to_pickle(events_to_occur, events_to_occur_pickle)
 	
+	update_results_with_soccerway(soccerway_url, events_to_occur)
 
-
+	for event in events_to_occur:
+		print(events_to_occur[event])
 
 
