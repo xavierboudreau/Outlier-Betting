@@ -1,6 +1,6 @@
 #TODO:
-#Complete name_standards.py so variations of a team's name are equivalent
 #when a game has a result add it to a finished_games set (for analyzing returns)
+#Round game times to nearest hour for easier comparison
 
 #Author: Xavier Boudreau
 import urllib.request
@@ -11,7 +11,7 @@ import time
 from bs4 import BeautifulSoup
 from game import *
 from odds import *
-import pickle
+from pickle_operations import *
 
 def moneyline_to_decimal(moneyline_odds):
 	try:
@@ -55,17 +55,6 @@ def combine_events(old_events, new_events):
 			#we haven't seen this game before, add it to the events that will occur
 			old_events[event_str] = new_events[event_str]
 			
-
-def get_from_pickle(filename):
-	try:
-		with open(filename, 'rb') as pickle_file:
-			return pickle.load(pickle_file)
-	except FileNotFoundError:
-		return None
-
-def save_to_pickle(events, filename):
-	with open(filename, 'wb+') as pickle_file:
-		pickle.dump(events, pickle_file)
 			
 def roundDateTime(dt):
 	#rounds a datetime object dt to nearest 20 minutes
@@ -121,7 +110,7 @@ def print_results_from_soccerway(url):
 		
 		row_tag = team_b_tag.find_next("tr")
 
-def update_results_with_soccerway(url, events):
+def update_results_with_soccerway(url, events, events_with_results, naming_standard):
 	#sample url: "https://us.soccerway.com/national/united-states/mls/2018/regular-season/r45738/"
 	
 	#results table tag: <table class="matches ">
@@ -149,37 +138,47 @@ def update_results_with_soccerway(url, events):
 	#we can't use the unix timestamp because we don't have a guarantee of when
 	#the page is updated
 	while row_tag != None:
-		unix_timestamp = int(row_tag["data-timestamp"])
-		game_datetime = pytz.utc.localize(datetime.datetime.fromtimestamp(unix_timestamp))
-		
-		team_a_tag = row_tag.find_next("td", class_ = "team team-a ")
-		score_tag = team_a_tag.find_next("td", class_ = "score-time score")
-		
-		if score_tag == None:
-			#we didn't find another completed match so we are done
-			break
-		team_b_tag = score_tag.find_next("td", class_ = "team team-b ")
-		
-		team_1 = team_a_tag.find_next("a")["title"]
-		score = score_tag.find_next("a").text.strip()
-		team_2 = team_b_tag.find_next("a")["title"]
-		
-		#TODO convert the unix timestamp to UTC
-		# OR have all datetimes (from pulling odds and results) be rounded to nearest hour
-		#This would work better because it allows
-		#for some error in time reporting and its doubtful teams will 
-		#have a rematch immediately after their game ends
-		
-		key = game_key(team_1, team_2, game_datetime)
-		score_str = "{} {} {}".format(team_1, score, team_2)
 		try:
-			events[key].result = score_str
-			print("added one result!!!")
+			unix_timestamp = int(row_tag["data-timestamp"])
+			game_datetime = pytz.utc.localize(datetime.datetime.fromtimestamp(unix_timestamp))
+		
+			team_a_tag = row_tag.find_next("td", class_ = "team team-a ")
+			score_tag = team_a_tag.find_next("td", class_ = "score-time score")
+		
+			if score_tag == None:
+				#we didn't find another completed match so we are done
+				break
+			team_b_tag = score_tag.find_next("td", class_ = "team team-b ")
+		
+			try:
+				team_1 = naming_standard[team_a_tag.find_next("a")["title"]]
+			except KeyError:
+				print("{} not found in name standard".format(team_a_tag.find_next("a")["title"]))
+			score = score_tag.find_next("a").text.strip()
+			try:
+				team_2 = naming_standard[team_b_tag.find_next("a")["title"]]
+			except KeyError:
+				print("{} not found in name standard".format(team_b_tag.find_next("a")["title"]))
+		
+			#TODO convert the unix timestamp to UTC
+			# OR have all datetimes (from pulling odds and results) be rounded to nearest hour
+			#This would work better because it allows for some error in time reporting and 
+			#its doubtful teams will have a rematch immediately after their game ends
+		
+			key = game_key(team_1, team_2, game_datetime)
+			score_str = "{} {} {}".format(team_1, score, team_2)
+			try:
+				events[key].result = score_str
+				events_with_results[key] = events[key]
+				del events[key]
+				print("added one result:\n\t{}\n\tResult: {}".format(key, score_str))
+			except KeyError:
+				print("Game not found:\n\t{}\n\tResult: {}".format(key, score_str))
+		
+			row_tag = team_b_tag.find_next("tr")
 		except KeyError:
-			print("Game not found:\n\t{}\n\tResult: {}".format(key, score_str))
-		
-		row_tag = team_b_tag.find_next("tr")
-		
+			print(row_tag)
+			row_tag = row_tag.find_next("tr")
 def finish_games(events, results):
 	#move the events that have results into a new set
 	pass
@@ -188,7 +187,7 @@ def compare_results_to_offered_odds(events):
 	#evaluate whether the bets offered for each game are winners or not
 	pass
 
-def pull_oddshark(url):
+def pull_oddshark(url, naming_standard):
 	'''
 	gets the betting offers listed at an oddshark webpage
 	'''
@@ -238,7 +237,17 @@ def pull_oddshark(url):
 		NYC = pytz.timezone("America/New_York")
 		game_start = datetime.datetime(year, month, day_of_month, hour, minute)
 		game_start = NYC.localize(game_start) 
-		new_game = game(team_tags[i].text.strip(), team_tags[i+1].text.strip(), date = game_start)
+		
+		try:
+			team_1 = naming_standard[team_tags[i].text.strip()]
+		except KeyError:
+			print("{} not found in name standard".format(team_tags[i].text.strip()))
+		try:
+			team_2 = naming_standard[team_tags[i+1].text.strip()]
+		except KeyError:
+			print("{} not found in name standard".format(team_tags[i+1].text.strip()))
+		
+		new_game = game(team_1, team_2, date = game_start)
 		events_on_page.append(new_game)
 
 	#find all the odds offered for all the betting events on this page
@@ -269,18 +278,22 @@ def pull_oddshark(url):
 if __name__ == '__main__':
 	events_to_occur_pickle = 'events_to_occur.pickle'
 	occured_events_pickle = 'occured_events.pickle'
+	MLS_standard_pickle = 'MLS_Standard.pickle'
 	oddshark_url = 'https://www.oddsshark.com/soccer/mls/odds'
 	soccerway_url = "https://us.soccerway.com/national/united-states/mls/2018/regular-season/r45738/"
 	
 	#events_to_occur is dictionary containing game objects that don't have a result recorded
-	#we want to occasionally pull odds from the internet to check if they have changed
+	#	we want to occasionally pull odds from the internet to check if they have changed
 	events_to_occur = get_from_pickle(events_to_occur_pickle)
+	#MLS_Standard is a dictionary to get a standard team name from team name variations
+	MLS_Standard = get_from_pickle(MLS_standard_pickle)
 	
+	new_events = pull_oddshark(oddshark_url, MLS_Standard)
 	
-	new_events = pull_oddshark(oddshark_url)
-	
+	print("ODDS SEEN\n")
 	for event in new_events:
 		print(new_events[event])
+	print("\n")
 	
 	#compare newly scraped odds to stored odds, adding them to the dataset if they
 	#aren't present
@@ -288,11 +301,22 @@ if __name__ == '__main__':
 		combine_events(events_to_occur, new_events)
 	else:
 		events_to_occur = new_events
-	save_to_pickle(events_to_occur, events_to_occur_pickle)
 	
-	update_results_with_soccerway(soccerway_url, events_to_occur)
-
+	events_with_results = get_from_pickle(occured_events_pickle)
+	if events_with_results == None:
+		events_with_results = {}
+	
+	update_results_with_soccerway(soccerway_url, events_to_occur, events_with_results, MLS_Standard)
+	
+	print("\nALL EVENTS:\n")
 	for event in events_to_occur:
 		print(events_to_occur[event])
+	for event in events_with_results:
+		print(events_with_results[event])
+	
+	save_to_pickle(events_to_occur, events_to_occur_pickle)
+	save_to_pickle(events_with_results, occured_events_pickle)
+	
+	
 
 

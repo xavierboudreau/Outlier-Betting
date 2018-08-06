@@ -1,10 +1,8 @@
 from odds import *
 
-#TODO:
 #A game_key is to act as hash-able type for game (e.g. in a dictionary)
 #note that hash(date1) == hash(date1.toZone('UTC'))
-#this will allow the games to go in a dictionary, to search a dictionary of
-#games without making a game object
+#this will allow the games to go in a dictionary
 
 class game_key:
 	def __init__(self, team1, team2, date):
