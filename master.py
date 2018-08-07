@@ -1,10 +1,6 @@
 #TODO:
-#make datetime objects timezone aware
-#pull results from web
 #when a game has a result add it to a finished_games set (for analyzing returns)
-#base all game times in UTC
-#	they are currently in Eastern time but UTC would make them consistent with
-#	the timezone of the timestamp describing when an odds was valid (datetime_valid)
+#Round game times to nearest hour for easier comparison
 
 #Author: Xavier Boudreau
 import urllib.request
@@ -15,7 +11,7 @@ import time
 from bs4 import BeautifulSoup
 from game import *
 from odds import *
-import pickle
+from pickle_operations import *
 
 def moneyline_to_decimal(moneyline_odds):
 	try:
@@ -28,6 +24,7 @@ def moneyline_to_decimal(moneyline_odds):
 		return -1/decimal_odds
 	else:
 		return decimal_odds
+		
 def get_int_time(timestr):
 	'''
 	returns the hour and minute respresented in timestr as integers
@@ -58,18 +55,13 @@ def combine_events(old_events, new_events):
 			#we haven't seen this game before, add it to the events that will occur
 			old_events[event_str] = new_events[event_str]
 			
-
-def get_from_pickle(filename):
-	try:
-		with open(filename, 'rb') as pickle_file:
-			return pickle.load(pickle_file)
-	except FileNotFoundError:
-		return None
-
-def save_to_pickle(events, filename):
-	with open(filename, 'wb+') as pickle_file:
-		pickle.dump(events, pickle_file)
 			
+def roundDateTime(dt):
+	#rounds a datetime object dt to nearest 10 minutes
+	discard = datetime.timedelta(minutes=dt.minute % 10,seconds=dt.second, microseconds=dt.microsecond)
+	dt -= discard
+	if discard >= datetime.timedelta(minutes=5):
+		dt += datetime.timedelta(minutes=10)
 
 def print_results_from_soccerway(url):
 	#sample url: "https://us.soccerway.com/national/united-states/mls/2018/regular-season/r45738/"
@@ -118,7 +110,7 @@ def print_results_from_soccerway(url):
 		
 		row_tag = team_b_tag.find_next("tr")
 
-def update_results_with_soccerway(url, events):
+def update_results_with_soccerway(url, events, events_with_results, naming_standard):
 	#sample url: "https://us.soccerway.com/national/united-states/mls/2018/regular-season/r45738/"
 	
 	#results table tag: <table class="matches ">
@@ -146,36 +138,61 @@ def update_results_with_soccerway(url, events):
 	#we can't use the unix timestamp because we don't have a guarantee of when
 	#the page is updated
 	while row_tag != None:
-		unix_timestamp = int(row_tag["data-timestamp"])
-		team_a_tag = row_tag.find_next("td", class_ = "team team-a ")
-		score_tag = team_a_tag.find_next("td", class_ = "score-time score")
+		try:
+			unix_timestamp = int(row_tag["data-timestamp"])
+			#game_datetime = pytz.utc.localize(datetime.datetime.fromtimestamp(unix_timestamp))
+			#for not found games, soccerway has the correct time
+			#	Real Salt Lake vs. Chicago Fire was at 22:00 EDT, Oddshark said 4pm
+			#	Houston Dynamo vs SKC was at 21:00 EDT, Oddshark said 4pm
+			#	Montreal Impact vs. D.C. United was at 19:30, Oddshark said 4pm
+			#	Same for 3 other games
+			#	It looks like we have a problem with oddsharks times incorrectly becoming 4pm!!!
+			game_datetime = datetime.datetime.fromtimestamp(unix_timestamp)
+			timezone = time.tzname[time.localtime().tm_isdst]
+			NYC = pytz.timezone("America/New_York")
+			game_datetime = NYC.localize(game_datetime)
+			#Rounded datetimes to nearest 10 minutes, allowing for some error in time reporting
+			roundDateTime(game_datetime)
 		
-		if score_tag == None:
-			#we didn't find another completed match so we are done
-			break
-		team_b_tag = score_tag.find_next("td", class_ = "team team-b ")
+			team_a_tag = row_tag.find_next("td", class_ = "team team-a ")
+			score_tag = team_a_tag.find_next("td", class_ = "score-time score")
 		
-		team_1 = team_a_tag.find_next("a")["title"]
-		score = score_tag.find_next("a").text.strip()
-		team_2 = team_b_tag.find_next("a")["title"]
+			if score_tag == None:
+				#we didn't find another completed match so we are done
+				break
+			team_b_tag = score_tag.find_next("td", class_ = "team team-b ")
 		
-		#currently timestamp will not match as game is in EST and this one is in unix
-		#I need to convert the unix timestamp to UTC and set the game datetime (game.when) to
-		#UTC
-		key_str = team_1 + team_2 + unix_timestamp
-		score_str = "{} {} {}".format(team_1, score, team_2)
-		table[key_str].result = score_str
+			try:
+				team_1 = naming_standard[team_a_tag.find_next("a")["title"]]
+			except KeyError:
+				print("{} not found in name standard".format(team_a_tag.find_next("a")["title"]))
+			score = score_tag.find_next("a").text.strip()
+			try:
+				team_2 = naming_standard[team_b_tag.find_next("a")["title"]]
+			except KeyError:
+				print("{} not found in name standard".format(team_b_tag.find_next("a")["title"]))
+			
+			print(game_datetime)
+			key = game_key(team_1, team_2, game_datetime)
+			score_str = "{} {} {}".format(team_1, score, team_2)
+			try:
+				events[key].result = score_str
+				events_with_results[key] = events[key]
+				del events[key]
+				print("added one result:\n\t{}\n\tResult: {}\tUNIX: {}".format(key, score_str, unix_timestamp))
+			except KeyError:
+				print("Game not found:\n\t{}\n\tResult: {}\tUNIX: {}".format(key, score_str, unix_timestamp))
 		
-		row_tag = team_b_tag.find_next("tr")
-		
-		
-	
-def finish_games(events, results):
-	#update events with results
-	#move the events that have results into a new set
+			row_tag = team_b_tag.find_next("tr")
+		except KeyError:
+			#print(row_tag)
+			row_tag = row_tag.find_next("tr")
+
+def compare_results_to_offered_odds(events):
+	#evaluate whether the bets offered for each game are winners or not
 	pass
 
-def pull_oddshark(url):
+def pull_oddshark(url, naming_standard):
 	'''
 	gets the betting offers listed at an oddshark webpage
 	'''
@@ -206,7 +223,8 @@ def pull_oddshark(url):
 	for i in range(0,len(team_tags),2):
 		#form a date time object that represents the start of this event
 		date_tag = team_tags[i].find_previous("div", class_ = "op-separator-bar op-left no-group-name")
-		time_tag = date_tag.find_next("div", class_ = "op-matchup-time op-matchup-text")
+		#time_tag = date_tag.find_next("div", class_ = "op-matchup-time op-matchup-text")
+		time_tag = team_tags[i].find_previous("div", class_ = "op-matchup-time op-matchup-text")
 		
 		hour, minute = get_int_time(time_tag.text.strip())
 		
@@ -218,10 +236,27 @@ def pull_oddshark(url):
 		year = datetime_valid.year
 		if datetime_valid.month > month:
 			year += 1
-		#TODO: convert to UTC (currently EST)
-		game_start = datetime.datetime(year, month, day_of_month, hour, minute)
 		
-		new_game = game(team_tags[i].text.strip(), team_tags[i+1].text.strip(), date = game_start)
+		#TODO: adjust the timezone to be dependent on the server's timezone instead
+		# of hardcoding New York 
+		timezone = time.tzname[time.localtime().tm_isdst]
+		NYC = pytz.timezone("America/New_York")
+		game_start = datetime.datetime(year, month, day_of_month, hour, minute)
+		game_start = NYC.localize(game_start)
+		#round game time to nearest 10 minutes, allowing for some error in
+		#time reporting
+		roundDateTime(game_start)
+		
+		try:
+			team_1 = naming_standard[team_tags[i].text.strip()]
+		except KeyError:
+			print("{} not found in name standard".format(team_tags[i].text.strip()))
+		try:
+			team_2 = naming_standard[team_tags[i+1].text.strip()]
+		except KeyError:
+			print("{} not found in name standard".format(team_tags[i+1].text.strip()))
+		
+		new_game = game(team_1, team_2, date = game_start)
 		events_on_page.append(new_game)
 
 	#find all the odds offered for all the betting events on this page
@@ -247,27 +282,52 @@ def pull_oddshark(url):
 			draw_result = 'draw'
 			events_on_page[i].add_odds(odds(bookie_name, draw_result, draw_odds, datetime_valid))
 	
-	return {str(events_on_page[i]):events_on_page[i] for i in range(len(events_on_page))}
+	return {(events_on_page[i].get_game_key()):events_on_page[i] for i in range(len(events_on_page))}
 	
 if __name__ == '__main__':
 	events_to_occur_pickle = 'events_to_occur.pickle'
 	occured_events_pickle = 'occured_events.pickle'
-	#events_to_occur is dictionary containing game objects that don't have a result recorded
-	#we want to occasionally pull odds from the internet to check if they have changed
-	events_to_occur = get_from_pickle(events_to_occur_pickle)
+	MLS_standard_pickle = 'MLS_Standard.pickle'
+	oddshark_url = 'https://www.oddsshark.com/soccer/mls/odds'
+	soccerway_url = "https://us.soccerway.com/national/united-states/mls/2018/regular-season/r45738/"
 	
-	url = 'https://www.oddsshark.com/soccer/mls/odds'
-	new_events = pull_oddshark(url)
-		
+	#events_to_occur is dictionary containing game objects that don't have a result recorded
+	#	we want to occasionally pull odds from the internet to check if they have changed
+	events_to_occur = get_from_pickle(events_to_occur_pickle)
+	#MLS_Standard is a dictionary to get a standard team name from team name variations
+	MLS_Standard = get_from_pickle(MLS_standard_pickle)
+	
+	new_events = pull_oddshark(oddshark_url, MLS_Standard)
+	
+	print("ODDS SEEN\n")
+	for event in new_events:
+		print(new_events[event])
+	print("\n")
+	
 	#compare newly scraped odds to stored odds, adding them to the dataset if they
 	#aren't present
 	if events_to_occur != None:
 		combine_events(events_to_occur, new_events)
 	else:
 		events_to_occur = new_events
-	save_to_pickle(events_to_occur, events_to_occur_pickle)
 	
-
-
+	events_with_results = get_from_pickle(occured_events_pickle)
+	if events_with_results == None:
+		events_with_results = {}
+	
+	#get the results of games from the internet
+	#when a game has a result, add it to events_with results for later
+	update_results_with_soccerway(soccerway_url, events_to_occur, events_with_results, MLS_Standard)
+	
+	print("\nALL EVENTS:\n")
+	for event in events_to_occur:
+		print(events_to_occur[event])
+	for event in events_with_results:
+		print(events_with_results[event])
+	
+	save_to_pickle(events_to_occur, events_to_occur_pickle)
+	save_to_pickle(events_with_results, occured_events_pickle)
+	
+	
 
 
