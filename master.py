@@ -1,6 +1,5 @@
 #TODO:
-#when a game has a result add it to a finished_games set (for analyzing returns)
-#Round game times to nearest hour for easier comparison
+#Analyze finished games
 
 #Author: Xavier Boudreau
 import urllib.request
