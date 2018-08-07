@@ -57,11 +57,11 @@ def combine_events(old_events, new_events):
 			
 			
 def roundDateTime(dt):
-	#rounds a datetime object dt to nearest 20 minutes
-	discard = datetime.timedelta(minutes=dt.minute % 20,seconds=tm.second, microseconds=tm.microsecond)
+	#rounds a datetime object dt to nearest 10 minutes
+	discard = datetime.timedelta(minutes=dt.minute % 10,seconds=dt.second, microseconds=dt.microsecond)
 	dt -= discard
-	if discard >= datetime.timedelta(minutes=10):
-		dt += datetime.timedelta(minutes=20)
+	if discard >= datetime.timedelta(minutes=5):
+		dt += datetime.timedelta(minutes=10)
 
 def print_results_from_soccerway(url):
 	#sample url: "https://us.soccerway.com/national/united-states/mls/2018/regular-season/r45738/"
@@ -140,7 +140,19 @@ def update_results_with_soccerway(url, events, events_with_results, naming_stand
 	while row_tag != None:
 		try:
 			unix_timestamp = int(row_tag["data-timestamp"])
-			game_datetime = pytz.utc.localize(datetime.datetime.fromtimestamp(unix_timestamp))
+			#game_datetime = pytz.utc.localize(datetime.datetime.fromtimestamp(unix_timestamp))
+			#for not found games, soccerway has the correct time
+			#	Real Salt Lake vs. Chicago Fire was at 22:00 EDT, Oddshark said 4pm
+			#	Houston Dynamo vs SKC was at 21:00 EDT, Oddshark said 4pm
+			#	Montreal Impact vs. D.C. United was at 19:30, Oddshark said 4pm
+			#	Same for 3 other games
+			#	It looks like we have a problem with oddsharks times incorrectly becoming 4pm!!!
+			game_datetime = datetime.datetime.fromtimestamp(unix_timestamp)
+			timezone = time.tzname[time.localtime().tm_isdst]
+			NYC = pytz.timezone("America/New_York")
+			game_datetime = NYC.localize(game_datetime)
+			#Rounded datetimes to nearest 10 minutes, allowing for some error in time reporting
+			roundDateTime(game_datetime)
 		
 			team_a_tag = row_tag.find_next("td", class_ = "team team-a ")
 			score_tag = team_a_tag.find_next("td", class_ = "score-time score")
@@ -159,30 +171,23 @@ def update_results_with_soccerway(url, events, events_with_results, naming_stand
 				team_2 = naming_standard[team_b_tag.find_next("a")["title"]]
 			except KeyError:
 				print("{} not found in name standard".format(team_b_tag.find_next("a")["title"]))
-		
-			#TODO convert the unix timestamp to UTC
-			# OR have all datetimes (from pulling odds and results) be rounded to nearest hour
-			#This would work better because it allows for some error in time reporting and 
-			#its doubtful teams will have a rematch immediately after their game ends
-		
+			
+			print(game_datetime)
 			key = game_key(team_1, team_2, game_datetime)
 			score_str = "{} {} {}".format(team_1, score, team_2)
 			try:
 				events[key].result = score_str
 				events_with_results[key] = events[key]
 				del events[key]
-				print("added one result:\n\t{}\n\tResult: {}".format(key, score_str))
+				print("added one result:\n\t{}\n\tResult: {}\tUNIX: {}".format(key, score_str, unix_timestamp))
 			except KeyError:
-				print("Game not found:\n\t{}\n\tResult: {}".format(key, score_str))
+				print("Game not found:\n\t{}\n\tResult: {}\tUNIX: {}".format(key, score_str, unix_timestamp))
 		
 			row_tag = team_b_tag.find_next("tr")
 		except KeyError:
-			print(row_tag)
+			#print(row_tag)
 			row_tag = row_tag.find_next("tr")
-def finish_games(events, results):
-	#move the events that have results into a new set
-	pass
-	
+
 def compare_results_to_offered_odds(events):
 	#evaluate whether the bets offered for each game are winners or not
 	pass
@@ -218,7 +223,8 @@ def pull_oddshark(url, naming_standard):
 	for i in range(0,len(team_tags),2):
 		#form a date time object that represents the start of this event
 		date_tag = team_tags[i].find_previous("div", class_ = "op-separator-bar op-left no-group-name")
-		time_tag = date_tag.find_next("div", class_ = "op-matchup-time op-matchup-text")
+		#time_tag = date_tag.find_next("div", class_ = "op-matchup-time op-matchup-text")
+		time_tag = team_tags[i].find_previous("div", class_ = "op-matchup-time op-matchup-text")
 		
 		hour, minute = get_int_time(time_tag.text.strip())
 		
@@ -236,7 +242,10 @@ def pull_oddshark(url, naming_standard):
 		timezone = time.tzname[time.localtime().tm_isdst]
 		NYC = pytz.timezone("America/New_York")
 		game_start = datetime.datetime(year, month, day_of_month, hour, minute)
-		game_start = NYC.localize(game_start) 
+		game_start = NYC.localize(game_start)
+		#round game time to nearest 10 minutes, allowing for some error in
+		#time reporting
+		roundDateTime(game_start)
 		
 		try:
 			team_1 = naming_standard[team_tags[i].text.strip()]
@@ -306,6 +315,8 @@ if __name__ == '__main__':
 	if events_with_results == None:
 		events_with_results = {}
 	
+	#get the results of games from the internet
+	#when a game has a result, add it to events_with results for later
 	update_results_with_soccerway(soccerway_url, events_to_occur, events_with_results, MLS_Standard)
 	
 	print("\nALL EVENTS:\n")
