@@ -39,6 +39,8 @@ class game:
 		self.when = date
 		self.result = result
 		self.odds_set = set()
+		self.winning_bets = []
+		self.losing_bets = []
 		
 	def __eq__(self, other):
 		return self.team_1 == other.team_1 and self.team_2 == other.team_2 and \
@@ -51,7 +53,16 @@ class game:
 		for other_odds in other.odds_set:
 			if other_odds not in self.odds_set:
 				self.odds_set.add(other_odds)
-				
+	def update_winning_bets(self):
+		if self.result = None:
+			raise TypeError
+		while odds_set:
+			bet = odds_set.pop()
+			if bet.is_winner(result):
+				self.winning_bets.append(bet)
+			else:
+				self.losing_bets.append(bet)
+					
 	def __str__(self):
 		return '{} vs. {} at {}\n\tResult: {}'.format(self.team_1, self.team_2, self.when.strftime("%H:%M on %m-%d-%Y"), self.result)
 	

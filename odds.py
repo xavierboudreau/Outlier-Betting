@@ -11,14 +11,16 @@ class odds:
 		self.result = result
 		self.odds_offered = odds_offered
 		self.time_offered = time_offered
-		#we don't start off knowing if this bet is successful
-		self.winning_bet = None
 	def __eq__(self, other):
 		return self.bookie == other.bookie and \
 			self.result == other.result and \
 			str_odds(self.odds_offered) == str_odds(other.odds_offered)
 	def __hash__(self):
 		return hash((self.bookie, self.result, str_odds(self.odds_offered)))
+	def is_winner(self, actual_result):
+		#if this bets self.result is consistent with actual_result, return True
+		#otherwise return False
+		pass
 		
 if __name__ == '__main__':
 	#test

@@ -187,9 +187,10 @@ def update_results_with_soccerway(url, events, events_with_results, naming_stand
 			#print(row_tag)
 			row_tag = row_tag.find_next("tr")
 
-def compare_results_to_offered_odds(events):
+def compare_results_to_offered_odds(events_with_results):
 	#evaluate whether the bets offered for each game are winners or not
-	pass
+	for event in events_with_results:
+		events_with_results[event].update_winning_bets()
 
 def pull_oddshark(url, naming_standard):
 	'''
@@ -327,6 +328,9 @@ if __name__ == '__main__':
 	save_to_pickle(events_to_occur, events_to_occur_pickle)
 	save_to_pickle(events_with_results, occured_events_pickle)
 	
+	#implement is_winner() in odds.py, then
+	#call compare_results_to_offered_odds(events_with_results)
+	#save results to a pickle
 	
 
 
