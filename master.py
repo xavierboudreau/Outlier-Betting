@@ -1,5 +1,8 @@
 #TODO:
-#Analyze finished games
+#save games with evaluated odds (won/lost) to pickle
+#Compute the average and percent difference of odds offered for a game's outcome
+#	I don't want to use standard deviation as increased variance would yield more frequent outliers
+#	and I'm not concerned with the frequency of outliers, just the how far the farthest outliers are
 
 #Author: Xavier Boudreau
 import urllib.request
@@ -171,17 +174,16 @@ def update_results_with_soccerway(url, events, events_with_results, naming_stand
 			except KeyError:
 				print("{} not found in name standard".format(team_b_tag.find_next("a")["title"]))
 			
-			print(game_datetime)
 			key = game_key(team_1, team_2, game_datetime)
 			score_str = "{} {} {}".format(team_1, score, team_2)
 			try:
 				events[key].result = score_str
 				events_with_results[key] = events[key]
 				del events[key]
-				print("added one result:\n\t{}\n\tResult: {}\tUNIX: {}".format(key, score_str, unix_timestamp))
+				#print("added one result:\n\t{}\n\tResult: {}\tUNIX: {}".format(key, score_str, unix_timestamp))
 			except KeyError:
-				print("Game not found:\n\t{}\n\tResult: {}\tUNIX: {}".format(key, score_str, unix_timestamp))
-		
+				#print("Game not found:\n\t{}\n\tResult: {}\tUNIX: {}".format(key, score_str, unix_timestamp))
+				pass
 			row_tag = team_b_tag.find_next("tr")
 		except KeyError:
 			#print(row_tag)
@@ -190,6 +192,10 @@ def update_results_with_soccerway(url, events, events_with_results, naming_stand
 def compare_results_to_offered_odds(events_with_results):
 	#evaluate whether the bets offered for each game are winners or not
 	for event in events_with_results:
+		print("\n")
+		print(events_with_results[event])
+		for odds in events_with_results[event].odds_set:
+			print(odds)
 		events_with_results[event].update_winning_bets()
 
 def pull_oddshark(url, naming_standard):
@@ -299,10 +305,12 @@ if __name__ == '__main__':
 	
 	new_events = pull_oddshark(oddshark_url, MLS_Standard)
 	
+	'''
 	print("ODDS SEEN\n")
 	for event in new_events:
 		print(new_events[event])
 	print("\n")
+	'''
 	
 	#compare newly scraped odds to stored odds, adding them to the dataset if they
 	#aren't present
@@ -319,18 +327,29 @@ if __name__ == '__main__':
 	#when a game has a result, add it to events_with results for later
 	update_results_with_soccerway(soccerway_url, events_to_occur, events_with_results, MLS_Standard)
 	
+	'''
 	print("\nALL EVENTS:\n")
 	for event in events_to_occur:
 		print(events_to_occur[event])
 	for event in events_with_results:
 		print(events_with_results[event])
+	'''
 	
 	save_to_pickle(events_to_occur, events_to_occur_pickle)
 	save_to_pickle(events_with_results, occured_events_pickle)
 	
-	#implement is_winner() in odds.py, then
-	#call compare_results_to_offered_odds(events_with_results)
+	
+	compare_results_to_offered_odds(events_with_results)
+	for event in events_with_results:
+		print("---------\n"+str(events_with_results[event]))
+		print("\nWINNING BETS\n")
+		for winner in events_with_results[event].winning_bets:
+			print("\n"+str(winner))
+		print("\nLOSING BETS\n")
+		for loser in events_with_results[event].losing_bets:
+			print("\n"+str(loser))
+		print("\n")
+		
 	#save results to a pickle
 	
-
-
+	

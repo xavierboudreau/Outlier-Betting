@@ -54,14 +54,29 @@ class game:
 			if other_odds not in self.odds_set:
 				self.odds_set.add(other_odds)
 	def update_winning_bets(self):
-		if self.result = None:
+		if self.result == None:
+			#this function cannot be called on games without results
 			raise TypeError
-		while odds_set:
-			bet = odds_set.pop()
-			if bet.is_winner(result):
-				self.winning_bets.append(bet)
+		if not self.odds_set:
+			self.winning_bets = []
+			self.losing_bets = []
+		while self.odds_set:
+			bet = self.odds_set.pop()
+			
+			#the winning_bet and losing_bet attributes do not exist in objects created
+			#before the constructor was updated
+			if bet.is_winner(self.result):
+				try:
+					self.winning_bets.append(bet)
+				except AttributeError:
+					self.winning_bets = []
+					self.winning_bets.append(bet)
 			else:
-				self.losing_bets.append(bet)
+				try:
+					self.losing_bets.append(bet)
+				except AttributeError:
+					self.losing_bets = []
+					self.losing_bets.append(bet)
 					
 	def __str__(self):
 		return '{} vs. {} at {}\n\tResult: {}'.format(self.team_1, self.team_2, self.when.strftime("%H:%M on %m-%d-%Y"), self.result)
