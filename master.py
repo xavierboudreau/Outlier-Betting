@@ -192,10 +192,12 @@ def update_results_with_soccerway(url, events, events_with_results, naming_stand
 def compare_results_to_offered_odds(events_with_results):
 	#evaluate whether the bets offered for each game are winners or not
 	for event in events_with_results:
+		'''
 		print("\n")
 		print(events_with_results[event])
 		for odds in events_with_results[event].odds_set:
 			print(odds)
+		'''
 		events_with_results[event].update_winning_bets()
 
 def pull_oddshark(url, naming_standard):
@@ -291,8 +293,12 @@ def pull_oddshark(url, naming_standard):
 	return {(events_on_page[i].get_game_key()):events_on_page[i] for i in range(len(events_on_page))}
 	
 if __name__ == '__main__':
+	#these events have not yet occured
 	events_to_occur_pickle = 'events_to_occur.pickle'
+	#these events have occured but we haven't updated their results and/or evaluated their odds
 	occured_events_pickle = 'occured_events.pickle'
+	#we've stored the result and evaluated the odds of these events
+	evaluated_events_pickle = 'evaluated_events.pickle'
 	MLS_standard_pickle = 'MLS_Standard.pickle'
 	oddshark_url = 'https://www.oddsshark.com/soccer/mls/odds'
 	soccerway_url = "https://us.soccerway.com/national/united-states/mls/2018/regular-season/r45738/"
@@ -339,17 +345,30 @@ if __name__ == '__main__':
 	save_to_pickle(events_with_results, occured_events_pickle)
 	
 	
+	#evaluate the stored odds compared to the results
+	
 	compare_results_to_offered_odds(events_with_results)
+	
+	#save results to a pickle
+	evaluated_events = get_from_pickle(evaluated_events_pickle)
+	if evaluated_events == None:
+		evaluated_events = {}
+	
 	for event in events_with_results:
-		print("---------\n"+str(events_with_results[event]))
+		evaluated_events[event] = events_with_results[event]
+	events_with_results.clear()
+	
+	save_to_pickle(evaluated_events, evaluated_events_pickle)
+	save_to_pickle(events_with_results, occured_events_pickle)
+	
+	for event in evaluated_events:
+		print("---------\n"+str(evaluated_events[event]))
 		print("\nWINNING BETS\n")
-		for winner in events_with_results[event].winning_bets:
+		for winner in evaluated_events[event].winning_bets:
 			print("\n"+str(winner))
 		print("\nLOSING BETS\n")
-		for loser in events_with_results[event].losing_bets:
+		for loser in evaluated_events[event].losing_bets:
 			print("\n"+str(loser))
 		print("\n")
-		
-	#save results to a pickle
 	
 	
