@@ -1,5 +1,5 @@
 #TODO:
-#save games with evaluated odds (won/lost) to pickle
+#I may want to make the game object have its odds set be organized by expected result (or I can do in analysis)
 #Compute the average and percent difference of odds offered for a game's outcome
 #	I don't want to use standard deviation as increased variance would yield more frequent outliers
 #	and I'm not concerned with the frequency of outliers, just the how far the farthest outliers are
