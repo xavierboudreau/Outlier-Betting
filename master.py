@@ -1,5 +1,8 @@
 #TODO:
-#Analyze finished games
+#I may want to make the game object have its odds set be organized by expected result (or I can do in analysis)
+#Compute the average and percent difference of odds offered for a game's outcome
+#	I don't want to use standard deviation as increased variance would yield more frequent outliers
+#	and I'm not concerned with the frequency of outliers, just the how far the farthest outliers are
 
 #Author: Xavier Boudreau
 import urllib.request
@@ -171,25 +174,31 @@ def update_results_with_soccerway(url, events, events_with_results, naming_stand
 			except KeyError:
 				print("{} not found in name standard".format(team_b_tag.find_next("a")["title"]))
 			
-			print(game_datetime)
 			key = game_key(team_1, team_2, game_datetime)
 			score_str = "{} {} {}".format(team_1, score, team_2)
 			try:
 				events[key].result = score_str
 				events_with_results[key] = events[key]
 				del events[key]
-				print("added one result:\n\t{}\n\tResult: {}\tUNIX: {}".format(key, score_str, unix_timestamp))
+				#print("added one result:\n\t{}\n\tResult: {}\tUNIX: {}".format(key, score_str, unix_timestamp))
 			except KeyError:
-				print("Game not found:\n\t{}\n\tResult: {}\tUNIX: {}".format(key, score_str, unix_timestamp))
-		
+				#print("Game not found:\n\t{}\n\tResult: {}\tUNIX: {}".format(key, score_str, unix_timestamp))
+				pass
 			row_tag = team_b_tag.find_next("tr")
 		except KeyError:
 			#print(row_tag)
 			row_tag = row_tag.find_next("tr")
 
-def compare_results_to_offered_odds(events):
+def compare_results_to_offered_odds(events_with_results):
 	#evaluate whether the bets offered for each game are winners or not
-	pass
+	for event in events_with_results:
+		'''
+		print("\n")
+		print(events_with_results[event])
+		for odds in events_with_results[event].odds_set:
+			print(odds)
+		'''
+		events_with_results[event].update_winning_bets()
 
 def pull_oddshark(url, naming_standard):
 	'''
@@ -284,8 +293,12 @@ def pull_oddshark(url, naming_standard):
 	return {(events_on_page[i].get_game_key()):events_on_page[i] for i in range(len(events_on_page))}
 	
 if __name__ == '__main__':
+	#these events have not yet occured
 	events_to_occur_pickle = 'events_to_occur.pickle'
+	#these events have occured but we haven't updated their results and/or evaluated their odds
 	occured_events_pickle = 'occured_events.pickle'
+	#we've stored the result and evaluated the odds of these events
+	evaluated_events_pickle = 'evaluated_events.pickle'
 	MLS_standard_pickle = 'MLS_Standard.pickle'
 	oddshark_url = 'https://www.oddsshark.com/soccer/mls/odds'
 	soccerway_url = "https://us.soccerway.com/national/united-states/mls/2018/regular-season/r45738/"
@@ -298,10 +311,12 @@ if __name__ == '__main__':
 	
 	new_events = pull_oddshark(oddshark_url, MLS_Standard)
 	
+	'''
 	print("ODDS SEEN\n")
 	for event in new_events:
 		print(new_events[event])
 	print("\n")
+	'''
 	
 	#compare newly scraped odds to stored odds, adding them to the dataset if they
 	#aren't present
@@ -318,15 +333,42 @@ if __name__ == '__main__':
 	#when a game has a result, add it to events_with results for later
 	update_results_with_soccerway(soccerway_url, events_to_occur, events_with_results, MLS_Standard)
 	
+	'''
 	print("\nALL EVENTS:\n")
 	for event in events_to_occur:
 		print(events_to_occur[event])
 	for event in events_with_results:
 		print(events_with_results[event])
+	'''
 	
 	save_to_pickle(events_to_occur, events_to_occur_pickle)
 	save_to_pickle(events_with_results, occured_events_pickle)
 	
 	
-
-
+	#evaluate the stored odds compared to the results
+	
+	compare_results_to_offered_odds(events_with_results)
+	
+	#save results to a pickle
+	evaluated_events = get_from_pickle(evaluated_events_pickle)
+	if evaluated_events == None:
+		evaluated_events = {}
+	
+	for event in events_with_results:
+		evaluated_events[event] = events_with_results[event]
+	events_with_results.clear()
+	
+	save_to_pickle(evaluated_events, evaluated_events_pickle)
+	save_to_pickle(events_with_results, occured_events_pickle)
+	
+	for event in evaluated_events:
+		print("---------\n"+str(evaluated_events[event]))
+		print("\nWINNING BETS\n")
+		for winner in evaluated_events[event].winning_bets:
+			print("\n"+str(winner))
+		print("\nLOSING BETS\n")
+		for loser in evaluated_events[event].losing_bets:
+			print("\n"+str(loser))
+		print("\n")
+	
+	
