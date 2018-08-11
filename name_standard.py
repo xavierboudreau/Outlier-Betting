@@ -1,17 +1,10 @@
 from pickle_operations import save_to_pickle
 
-def add_possible_names(standard, default, name_variations):
-	for name_variation in name_variations:
-		standard[name_variation] = default
-
-
-if __name__ == "__main__":
-	MLS_Standard = {}
-	#TODO: read in name_variations.csv to update possibility of team names
+def save_standard(name_filepath, standard_name):
+	Standard = {}
 	
-	mls_name_filepath = "name_variations.csv"
-	mls_name_file = open(mls_name_filepath, 'r')
-	lines = mls_name_file.read().split("\n")
+	name_file = open(name_filepath, 'r')
+	lines = name_file.read().split("\n")
 	
 	for line in lines:
 		team_variations = line.split(",")
@@ -20,7 +13,12 @@ if __name__ == "__main__":
 		for name_variation in team_variations:
 			#ignore empty cells in the csv
 			if name_variation != "":
-				MLS_Standard[name_variation] = default
-				
+				Standard[name_variation] = default
+	
 	#store result in pickle for master to use the table
-	save_to_pickle(MLS_Standard, "MLS_Standard.pickle")
+	save_to_pickle(Standard, "{}.pickle".format(standard_name))
+				
+if __name__ == "__main__":
+	name_filepath = input("Enter csv filepath containing name variations (w/ .csv) (e.g. mls_name_variations.csv): ")
+	standard_name = input("Enter name for pickle (w/o .pickle) (e.g. MLS_Standard): ")
+	save_standard(name_filepath, standard_name)

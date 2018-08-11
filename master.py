@@ -41,9 +41,9 @@ def get_int_time(timestr):
 	hour = int(timestr_fields[0])
 	minute = int(timestr_fields[1][:2])
 	if afternoon:
-		hour += 12
-	elif hour == 12:
-		hour = 0
+		hour = 12+hour%12
+	else:
+		hour = hour%12
 	return hour, minute
 
 def combine_events(old_events, new_events):
@@ -291,15 +291,74 @@ def pull_oddshark(url, naming_standard):
 			events_on_page[i].add_odds(odds(bookie_name, draw_result, draw_odds, datetime_valid))
 	
 	return {(events_on_page[i].get_game_key()):events_on_page[i] for i in range(len(events_on_page))}
+
+def refresh_EPL_data(events_to_occur_pickle, occured_events_pickle, evaluated_events_pickle, EPL_standard_pickle):
+	oddshark_url = 'https://www.oddsshark.com/soccer/epl/odds'
+	soccerway_url = 'https://us.soccerway.com/national/england/premier-league/20182019/regular-season/r48730'
 	
-if __name__ == '__main__':
-	#these events have not yet occured
-	events_to_occur_pickle = 'events_to_occur.pickle'
-	#these events have occured but we haven't updated their results and/or evaluated their odds
-	occured_events_pickle = 'occured_events.pickle'
-	#we've stored the result and evaluated the odds of these events
-	evaluated_events_pickle = 'evaluated_events.pickle'
-	MLS_standard_pickle = 'MLS_Standard.pickle'
+	events_to_occur =  get_from_pickle(events_to_occur_pickle)
+	EPL_Standard = get_from_pickle(EPL_standard_pickle)
+	new_events = pull_oddshark(oddshark_url, EPL_Standard)
+	'''
+	print("ODDS SEEN\n")
+	for event in new_events:
+		print(new_events[event])
+	print("\n")
+	'''
+	#compare newly scraped odds to stored odds, adding them to the dataset if they
+	#aren't present
+	if events_to_occur != None:
+		combine_events(events_to_occur, new_events)
+	else:
+		events_to_occur = new_events
+	
+	events_with_results = get_from_pickle(occured_events_pickle)
+	if events_with_results == None:
+		events_with_results = {}
+	
+	#get the results of games from the internet
+	#when a game has a result, add it to events_with results for later
+	update_results_with_soccerway(soccerway_url, events_to_occur, events_with_results, EPL_Standard)
+	
+	print("\nALL EVENTS:\n")
+	for event in events_to_occur:
+		print(events_to_occur[event])
+	for event in events_with_results:
+		print(events_with_results[event])
+	
+	
+	save_to_pickle(events_to_occur, events_to_occur_pickle)
+	save_to_pickle(events_with_results, occured_events_pickle)
+	
+	
+	#evaluate the stored odds compared to the results
+	
+	compare_results_to_offered_odds(events_with_results)
+	
+	#save results to a pickle
+	evaluated_events = get_from_pickle(evaluated_events_pickle)
+	if evaluated_events == None:
+		evaluated_events = {}
+	
+	for event in events_with_results:
+		evaluated_events[event] = events_with_results[event]
+	events_with_results.clear()
+	
+	save_to_pickle(evaluated_events, evaluated_events_pickle)
+	save_to_pickle(events_with_results, occured_events_pickle)
+	
+	
+	for event in evaluated_events:
+		print("---------\n"+str(evaluated_events[event]))
+		print("\nWINNING BETS\n")
+		for winner in evaluated_events[event].winning_bets:
+			print("\n"+str(winner))
+		print("\nLOSING BETS\n")
+		for loser in evaluated_events[event].losing_bets:
+			print("\n"+str(loser))
+		print("\n")
+
+def refresh_MLS_data(events_to_occur_pickle, occured_events_pickle, evaluated_events_pickle, MLS_standard_pickle):
 	oddshark_url = 'https://www.oddsshark.com/soccer/mls/odds'
 	soccerway_url = "https://us.soccerway.com/national/united-states/mls/2018/regular-season/r45738/"
 	
@@ -333,13 +392,13 @@ if __name__ == '__main__':
 	#when a game has a result, add it to events_with results for later
 	update_results_with_soccerway(soccerway_url, events_to_occur, events_with_results, MLS_Standard)
 	
-	'''
+	
 	print("\nALL EVENTS:\n")
 	for event in events_to_occur:
 		print(events_to_occur[event])
 	for event in events_with_results:
 		print(events_with_results[event])
-	'''
+	
 	
 	save_to_pickle(events_to_occur, events_to_occur_pickle)
 	save_to_pickle(events_with_results, occured_events_pickle)
@@ -361,6 +420,7 @@ if __name__ == '__main__':
 	save_to_pickle(evaluated_events, evaluated_events_pickle)
 	save_to_pickle(events_with_results, occured_events_pickle)
 	
+	
 	for event in evaluated_events:
 		print("---------\n"+str(evaluated_events[event]))
 		print("\nWINNING BETS\n")
@@ -370,5 +430,23 @@ if __name__ == '__main__':
 		for loser in evaluated_events[event].losing_bets:
 			print("\n"+str(loser))
 		print("\n")
+	
+if __name__ == '__main__':
+	#these events have not yet occured
+	MLS_events_to_occur_pickle = 'MLS/events_to_occur.pickle'
+	EPL_events_to_occur_pickle = 'EPL/events_to_occur.pickle'
+	#these events have occured but we haven't updated their results and/or evaluated their odds
+	MLS_occured_events_pickle = 'MLS/occured_events.pickle'
+	EPL_occured_events_pickle = 'EPL/occured_events.pickle'
+	#we've stored the result and evaluated the odds of these events
+	MLS_evaluated_events_pickle = 'MLS/evaluated_events.pickle'
+	EPL_evaluated_events_pickle = 'EPL/evaluated_events.pickle'
+	
+	MLS_standard_pickle = 'MLS/Standard.pickle'
+	EPL_standard_pickle = 'EPL/Standard.pickle'
+	
+	refresh_MLS_data(MLS_events_to_occur_pickle, MLS_occured_events_pickle, MLS_evaluated_events_pickle, MLS_standard_pickle)
+	refresh_EPL_data(EPL_events_to_occur_pickle, EPL_occured_events_pickle, EPL_evaluated_events_pickle, EPL_standard_pickle)
+	
 	
 	

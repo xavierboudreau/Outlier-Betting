@@ -38,9 +38,9 @@ class game:
 		self.team_2 = team_2
 		self.when = date
 		self.result = result
-		self.odds_set = set()
-		self.winning_bets = []
-		self.losing_bets = []
+		self.bets = {}
+		self.winning_bets = {}
+		self.losing_bets = {}
 		
 	def __eq__(self, other):
 		return self.team_1 == other.team_1 and self.team_2 == other.team_2 and \
@@ -50,33 +50,22 @@ class game:
 		return game_key(self.team_1, self.team_2, self.when)
 		
 	def combine_odds(self, other):
-		for other_odds in other.odds_set:
-			if other_odds not in self.odds_set:
-				self.odds_set.add(other_odds)
+		for other_result in other.bets:
+			if other_result in self.bets:
+				self.bets[other_result].update(other.bets[other_result])
+			else:
+				self.bets[other_result] = other.bets[other_result]
+				
 	def update_winning_bets(self):
 		if self.result == None:
 			#this function cannot be called on games without results
 			raise TypeError
-		if not self.odds_set:
-			self.winning_bets = []
-			self.losing_bets = []
-		while self.odds_set:
-			bet = self.odds_set.pop()
-			
-			#the winning_bet and losing_bet attributes do not exist in objects created
-			#before the constructor was updated
-			if bet.is_winner(self.result):
-				try:
-					self.winning_bets.append(bet)
-				except AttributeError:
-					self.winning_bets = []
-					self.winning_bets.append(bet)
+		
+		for bet_result in self.bets:
+			if is_winner(bet_result, self.result):
+				self.winning_bets[bet_result] = self.bets[bet_result]
 			else:
-				try:
-					self.losing_bets.append(bet)
-				except AttributeError:
-					self.losing_bets = []
-					self.losing_bets.append(bet)
+				self.losing_bets[bet_result] = self.bets[bet_result]
 					
 	def __str__(self):
 		return '{} vs. {} at {}\n\tResult: {}'.format(self.team_1, self.team_2, self.when.strftime("%H:%M on %m-%d-%Y"), self.result)
@@ -86,4 +75,9 @@ class game:
 		
 	def add_odds(self, new_odds):
 		if new_odds.odds_offered != None:
-			self.odds_set.add(new_odds)
+			if new_odds.result in self.bets:
+				self.bets[new_odds.result].add(new_odds)
+			else:
+				self.bets[new_odds.result] = {new_odds}
+			
+		

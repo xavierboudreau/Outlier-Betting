@@ -5,21 +5,7 @@ def str_odds(odds):
 	#round the odds to four decimal places
 	return '{0:.4f}'.format(odds)
 
-class odds:
-	def __init__(self, bookie, result, odds_offered, time_offered):
-		self.bookie = bookie
-		self.result = result
-		self.odds_offered = odds_offered
-		self.time_offered = time_offered
-	def __eq__(self, other):
-		return self.bookie == other.bookie and \
-			self.result == other.result and \
-			str_odds(self.odds_offered) == str_odds(other.odds_offered)
-	def __hash__(self):
-		return hash((self.bookie, self.result, str_odds(self.odds_offered)))
-	def __str__(self):
-		return "bookie: {}\t\tresult:{}\t\t odds offered: {}".format(self.bookie, self.result, self.odds_offered)
-	def is_winner(self, actual_result):
+def is_winner(bet_result, actual_result):
 		#if this bets self.result is consistent with actual_result, return True
 		#otherwise return False
 		
@@ -50,11 +36,28 @@ class odds:
 			winning_team = team_2
 		
 		if winning_team == None:
-			return self.result == "draw"
+			return bet_result == "draw"
 		else:
 			#this line is dangerous because "pizza" should be an error rather than
 			#a losing bet. Break into two elif and an else case
-			return self.result == "{} won".format(winning_team)
+			return bet_result == "{} won".format(winning_team)
+
+class odds:
+	def __init__(self, bookie, result, odds_offered, time_offered):
+		self.bookie = bookie
+		self.result = result
+		self.odds_offered = odds_offered
+		self.time_offered = time_offered
+	def __eq__(self, other):
+		return self.bookie == other.bookie and \
+			self.result == other.result and \
+			str_odds(self.odds_offered) == str_odds(other.odds_offered)
+	def __hash__(self):
+		return hash((self.bookie, self.result, str_odds(self.odds_offered)))
+	def __str__(self):
+		return "bookie: {}\t\tresult:{}\t\t odds offered: {}".format(self.bookie, self.result, self.odds_offered)
+	def __repr__(self):
+		return str(self)
 			
 		
 		
