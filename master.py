@@ -319,13 +319,13 @@ def refresh_EPL_data(events_to_occur_pickle, occured_events_pickle, evaluated_ev
 	#get the results of games from the internet
 	#when a game has a result, add it to events_with results for later
 	update_results_with_soccerway(soccerway_url, events_to_occur, events_with_results, EPL_Standard)
-	
+	'''
 	print("\nALL EVENTS:\n")
 	for event in events_to_occur:
 		print(events_to_occur[event])
 	for event in events_with_results:
 		print(events_with_results[event])
-	
+	'''
 	
 	save_to_pickle(events_to_occur, events_to_occur_pickle)
 	save_to_pickle(events_with_results, occured_events_pickle)
@@ -392,13 +392,13 @@ def refresh_MLS_data(events_to_occur_pickle, occured_events_pickle, evaluated_ev
 	#when a game has a result, add it to events_with results for later
 	update_results_with_soccerway(soccerway_url, events_to_occur, events_with_results, MLS_Standard)
 	
-	
+	'''
 	print("\nALL EVENTS:\n")
 	for event in events_to_occur:
 		print(events_to_occur[event])
 	for event in events_with_results:
 		print(events_with_results[event])
-	
+	'''
 	
 	save_to_pickle(events_to_occur, events_to_occur_pickle)
 	save_to_pickle(events_with_results, occured_events_pickle)
