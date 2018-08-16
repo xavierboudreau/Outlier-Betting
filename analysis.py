@@ -1,9 +1,8 @@
 from pickle_operations import *
+import numpy as np
 
 #TODO
-#compute average bet value and percent differences (not percent error) for one event bet result
-#plot a distribution of percent differences for many bets
-#make variable epsilon strategy simulation
+#implement cynical strategy that prefers odds 
 
 class result:
 	def __init__(self, result_string, odds_list, avg_odds):
@@ -34,15 +33,16 @@ def update_percents_list(odds_w_percents, odds_wo_percents):
 	for odds in odds_wo_percents:
 		odds_w_percents.append(odds)
 
-def find_distance_arrays(event_data_pickle):
+def find_distance_arrays(event_data):
 	'''
-	find
-	winners{game: {result: [avg_odds, odds_list]}}
+	parameters:
+	event_data: dictionary of games
+	
+	returns
+	winning_odds: a list of odds objects that were successful
+	losing_odds: a list of odds objects that were not successful
 	'''
-	event_data = get_from_pickle(event_data_pickle)
-	if event_data == None:
-		return None
-		
+	
 	winning_odds = []
 	losing_odds = []
 	
@@ -64,71 +64,81 @@ def find_distance_arrays(event_data_pickle):
 	
 	return winning_odds, losing_odds
 
-def calculate_profit(winning_odds, losing_odds):
-	#returns array of (percent change from average,profit)
-	#sorted from high to low by percent change. 
-	#For some % change x in the array,
-	#its associated profit y will be the profit or loss incurred if we placed bets
-	#on all odds with percent change x or greater
+def calculate_profit_bins(winning_odds, losing_odds, bins):
+	'''
+	Returns: a list profits such that profits[k] represents the profit or loss incurred
+	if all bets with percent change bins[k] or higher were taken
 	
-	#profit = { q if winner, -1 if loser}, where q is the offered odds of the bet
+	winning_odds: a list of odds objects that were successful
+	losing_odds: a list of odds objects that were not successful
+	bins: a list of minimum cutoffs for percent change in odd objects
+	'''
+	#I could increase the speed by reusing previous entries in profits table
+	#but I don't have that much data at the moment so its not a concern
 	
-	
-	if len(winning_odds) < 2 or len(losing_odds) < 2:
+	if len(winning_odds)==0 or len(losing_odds)==0:
 		return None
 	
-	profits = [None for i in range(len(winning_odds))]
+	profits = [None for i in range(len(bins))]
 	
-	#we are calculating the profit up to these indicies - 1
-	winner_split = 1
-	loser_split = 1
-	
-	#these indicies are what we will iterate through the odds lists to capture the profit/loss
-	curr_winner = 0
-	curr_loser = 0
-	
-	#store the profit to avoid uneccessary re-computing
-	profit = 0
-	while winner_split <= len(winning_odds):
-		#cutoff is the minimum percent change we will allow this round
-		cutoff = winning_odds[winner_split-1].percent_from_avg
-		
-		while loser_split <= len(losing_odds) and losing_odds[loser_split-1].percent_from_avg >= cutoff:
-			loser_split += 1
-		#the last unit added to loser_split is a mistake
-		if loser_split > 0:
-			loser_split -= 1
-		
-		while curr_winner < winner_split:
-			profit += winning_odds[curr_winner].odds_offered
-			curr_winner += 1
-		
-		while curr_loser < loser_split:
-			#our profit function dictates that a lost bet yields a loss of 1
+	for cutoff_index in range(len(bins)):
+		profit = 0
+		cutoff = bins[cutoff_index]
+		i = 0
+		while i < len(winning_odds) and winning_odds[i].percent_from_avg >= cutoff:
+			#we gain the offered odds for every correct bet
+			profit += winning_odds[i].odds_offered
+			i += 1
+		i = 0
+		while i < len(losing_odds) and losing_odds[i].percent_from_avg >= cutoff:
+			#we lose a dollar for every incorrect
 			profit -= 1
-			curr_loser += 1
+			i += 1
 		
-		profits[winner_split-1] = (cutoff, profit)
-		
-		curr_winner = winner_split
-		curr_loser = loser_split
-		winner_split += 1
-		
-		#reset loser_split so we can test the 0 index again next loop
-		if loser_split < 1:
-			loser_split = 1
-
+		profits[cutoff_index] = profit
+	
 	return profits
+	
 
 if __name__ == '__main__':
-	event_data_pickle = 'MLS/evaluated_events.pickle'
-	winning_odds, losing_odds = find_distance_arrays(event_data_pickle)
-	profits = calculate_profit(winning_odds, losing_odds)
-	print(profits)
+	#event_data_pickle = 'MLS/evaluated_events.pickle'
+	event_data_pickle = 'EPL/evaluated_events.pickle'
+	event_data = get_from_pickle(event_data_pickle)
 	
+	for event in event_data:
+		print(event)
 	
+	winning_odds, losing_odds = find_distance_arrays(event_data)
+	print('Number of losing bets:{}'.format(len(losing_odds)))
+	print('NUmber of winning bets: {}'.format(len(winning_odds)))
+	net_income = 0
+	for bet in winning_odds:
+		net_income += bet.odds_offered
+	print('Total value of winning bets: {}'.format(net_income))
 	
+	'''
+	print('\nWINNERS\n')
+	for winner in winning_odds:
+		print('{}\t{}\t{}\t{}'.format(winner.percent_from_avg, winner.odds_offered, winner.result, winner.bookie))
+	print('\nLOSERS\n')
+	for loser in losing_odds:
+		print('{}\t{}\t{}'.format(loser.percent_from_avg, loser.result, loser.bookie))
+	'''
+	#The bins space depends on the high and low percent_from_average in the odds lists
+	bins = np.linspace(0.5,-0.5,100)
 	
+	profits = calculate_profit_bins(winning_odds, losing_odds, bins)
+	
+	print("Total possible bets: {}".format(len(winning_odds)+len(losing_odds)))
+	print("Total games: {}".format(len(event_data)))
+	
+	print('---\nPERCENT CHANGE')
+	for bin in bins:
+		print(bin)
+	
+	print('----\nPROFITS')
+	for profit in profits:
+		print(profit)
 	
 	
 	

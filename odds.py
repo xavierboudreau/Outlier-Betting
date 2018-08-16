@@ -55,7 +55,7 @@ class odds:
 	def __hash__(self):
 		return hash((self.bookie, self.result, str_odds(self.odds_offered)))
 	def __str__(self):
-		return "bookie: {}\t\tresult:{}\t\t odds offered: {}".format(self.bookie, self.result, self.odds_offered)
+		return "bookie: {} result:{} odds offered: {}".format(self.bookie, self.result, self.odds_offered)
 	def __repr__(self):
 		return str(self)
 			
