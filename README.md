@@ -18,3 +18,10 @@ Tasks:
 * Web-crawling to find actual results of events
 * Calculate and plot returns with different distance tolerances
 	* Compare to another strategy, such as random betting
+	
+Results:
+
+* The results for MLS and EPL are stored in the MLS_graphs and EPL_graphs folders respectively
+	- I intend to update these results once every 10 days
+* Over the course of about 30 games in each league, there is a 10-20% return for the optimal percent difference
+* Over the course of about 30 games in each league, the optimal percent difference range is +20-30% from the average quoted odds

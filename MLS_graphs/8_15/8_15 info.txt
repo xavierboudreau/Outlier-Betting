@@ -1,0 +1,5 @@
+Number of losing bets:793
+NUmber of winning bets: 402
+Total value of winning bets: 924.8660214089721
+Total possible bets: 1195
+Total games: 12
