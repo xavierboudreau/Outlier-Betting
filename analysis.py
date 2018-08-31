@@ -99,23 +99,56 @@ def calculate_profit_bins(winning_odds, losing_odds, bins):
 	
 	return profits
 	
+def find_min_max_odds_variation(winning_odds, losing_odds):
+	min = float('inf');
+	max = -float('inf');
+	
+	for winner in winning_odds:
+		if winner.percent_from_avg < min:
+			min = winner.percent_from_avg
+		if winner.percent_from_avg > max:
+			max = winner.percent_from_avg
+	
+	for loser in losing_odds:
+		if loser.percent_from_avg < min:
+			min = loser.percent_from_avg
+		if loser.percent_from_avg > max:
+			max = loser.percent_from_avg
+	
+	return min, max
+
+def save_bins_to_csv(csv_path, bins, profits):
+	if len(bins) != len(profits):
+		print("NUMBER OF BINS & PROFITS ARE UNEQUAL")
+		return None
+	
+	csv = open(csv_path, 'w+')
+	csv.write("PERCENT CHANGE,PROFITS\n")
+	
+	for i in range(len(bins)):
+		csv.write("{},{}\n".format(bins[i], profits[i]))
+	
+	csv.close()
 
 if __name__ == '__main__':
-	#event_data_pickle = 'MLS/evaluated_events.pickle'
 	event_data_pickle = 'EPL/evaluated_events.pickle'
+	bins_profits_csv = "EPL_graphs/8_30.csv"
+	#event_data_pickle = 'EPL/evaluated_events.pickle'
 	event_data = get_from_pickle(event_data_pickle)
 	
-	for event in event_data:
-		print(event)
 	
 	winning_odds, losing_odds = find_distance_arrays(event_data)
-	print('Number of losing bets:{}'.format(len(losing_odds)))
+	print('Number of losing bets: {}'.format(len(losing_odds)))
 	print('NUmber of winning bets: {}'.format(len(winning_odds)))
 	net_income = 0
 	for bet in winning_odds:
 		net_income += bet.odds_offered
 	print('Total value of winning bets: {}'.format(net_income))
 	
+	
+	min_diff, max_diff = find_min_max_odds_variation(winning_odds, losing_odds)
+	print("Max percent difference in bet set: {}".format(max_diff))
+	print("Min percent difference in bet set: {}".format(min_diff))
 	'''
 	print('\nWINNERS\n')
 	for winner in winning_odds:
@@ -125,13 +158,16 @@ if __name__ == '__main__':
 		print('{}\t{}\t{}'.format(loser.percent_from_avg, loser.result, loser.bookie))
 	'''
 	#The bins space depends on the high and low percent_from_average in the odds lists
-	bins = np.linspace(0.5,-0.5,100)
+	buckets = 100
+	bins = np.linspace(max_diff + 0.01, min_diff - 0.01, buckets)
 	
 	profits = calculate_profit_bins(winning_odds, losing_odds, bins)
 	
 	print("Total possible bets: {}".format(len(winning_odds)+len(losing_odds)))
 	print("Total games: {}".format(len(event_data)))
 	
+	save_bins_to_csv(bins_profits_csv, bins, profits)
+	'''
 	print('---\nPERCENT CHANGE')
 	for bin in bins:
 		print(bin)
@@ -139,7 +175,7 @@ if __name__ == '__main__':
 	print('----\nPROFITS')
 	for profit in profits:
 		print(profit)
-	
+	'''
 	
 	
 	
