@@ -1,0 +1,7 @@
+Number of losing bets: 2250
+Number of winning bets: 1100
+Total value of winning bets: 1678.827770355566
+Max percent difference in bet set: 0.5583136251075256
+Min percent difference in bet set: -0.5340650238144544
+Total possible bets: 3350
+Total games: 43
