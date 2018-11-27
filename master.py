@@ -1,8 +1,5 @@
 #TODO:
-#I may want to make the game object have its odds set be organized by expected result (or I can do in analysis)
-#Compute the average and percent difference of odds offered for a game's outcome
-#	I don't want to use standard deviation as increased variance would yield more frequent outliers
-#	and I'm not concerned with the frequency of outliers, just the how far the farthest outliers are
+#add Baseball as there are games everyday in the summer- good data!
 
 #Author: Xavier Boudreau
 import urllib.request
@@ -56,8 +53,7 @@ def combine_events(old_events, new_events):
 		else:
 			#we haven't seen this game before, add it to the events that will occur
 			old_events[event_str] = new_events[event_str]
-			
-			
+
 def roundDateTime(dt):
 	#rounds a datetime object dt to nearest 10 minutes
 	discard = datetime.timedelta(minutes=dt.minute % 10,seconds=dt.second, microseconds=dt.microsecond)
@@ -203,6 +199,7 @@ def compare_results_to_offered_odds(events_with_results):
 def pull_oddshark(url, naming_standard):
 	'''
 	gets the betting offers listed at an oddshark webpage
+	returns a dictionary of events
 	'''
 	months = ['January', 'February', 'March', 'April', 'May', 'June', 'July',
 		'August', 'September', 'October', 'November', 'December']
@@ -292,6 +289,54 @@ def pull_oddshark(url, naming_standard):
 	
 	return {(events_on_page[i].get_game_key()):events_on_page[i] for i in range(len(events_on_page))}
 
+def pull_oddshark_baseball(url, naming_standard):
+	'''
+	Gets the betting offers listed at an oddshark webpage
+	This function should be used instead of pull_oddshark for baseball matches
+	
+	returns a dictionary of events
+	'''
+	months = ['January', 'February', 'March', 'April', 'May', 'June', 'July',
+		'August', 'September', 'October', 'November', 'December']
+	#use this for coverting string months into the conventional integer for that month
+	#e.g. February = 2
+	month_str_to_number = {months[i]: i+1 for i in range(len(months))}
+	
+	'''
+	HTML Tags
+	Team 1 win odds class = op-item op-spread border-bottom op-<BOOKIE_NAME>
+	Team 2 win odds class = op-item op-spread op-<BOOKIE_NAME>
+	
+	Date class = op-separator-bar op-left no-group-name
+		data-op-date = {"full_date":"Tuesday August 21","short_date":"Tue Aug 21","group_name":""}
+	
+	Team 1 class = op-matchup-team op-matchup-text op-team-top
+		data-op-name = {"full_name":"Atlanta","short_name":"ATL"}
+	Team 2 class = op-matchup-team op-matchup-text op-team-bottom
+		data-op-name = {"full_name":"Pittsburgh","short_name":"PIT"}
+	'''
+	
+	bookie_names = ['opening', 'bovada.lv', 'mybookie', 'intertops', 'betonline', 
+		'caesars', '5dimes', 'westgate', 'topbet', 'sportsbetting', 'gtbets', 'betnow',
+		'skybook', 'sportbet', 'station', 'mirage', 'wynn']
+	team_1_win_class = 'op-item op-spread border-bottom op-{}'
+	team_2_win_class = 'op-item op-spread op-{}'
+	
+	page = urllib.request.urlopen(url)
+
+	soup = BeautifulSoup(page, 'html.parser')
+	datetime_valid = datetime.datetime.now(datetime.timezone.utc)
+	
+	team_1_tags = soup.findall("div", class_ = "op-matchup-team op-matchup-text op-team-top")
+	
+	for team_1_tag in team_1_tags:
+		pass
+		#prev for date
+		#next for team 2
+	
+	#process bookies
+		
+		
 def refresh_EPL_data(events_to_occur_pickle, occured_events_pickle, evaluated_events_pickle, EPL_standard_pickle):
 	oddshark_url = 'https://www.oddsshark.com/soccer/epl/odds'
 	soccerway_url = 'https://us.soccerway.com/national/england/premier-league/20182019/regular-season/r48730'
