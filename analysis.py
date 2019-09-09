@@ -1,8 +1,7 @@
 from pickle_operations import *
 import numpy as np
 
-#TODO
-#implement cynical strategy that prefers odds 
+#TODO: implement cynical strategy that prefers odds 
 
 class result:
 	def __init__(self, result_string, odds_list, avg_odds):
@@ -58,7 +57,6 @@ def find_distance_arrays(event_data):
 			
 			update_percents_list(losing_odds, odds_list)
 						
-	#sort winning and losing odds by percent difference from average
 	winning_odds.sort(key = lambda x: x.percent_from_avg, reverse = True)
 	losing_odds.sort(key = lambda x: x.percent_from_avg, reverse = True)
 	
@@ -133,7 +131,6 @@ def save_bins_to_csv(csv_path, bins, profits):
 if __name__ == '__main__':
 	event_data_pickle = 'MLS/evaluated_events.pickle'
 	bins_profits_csv = "MLS_graphs/11_27/11_27.csv"
-	#event_data_pickle = 'EPL/evaluated_events.pickle'
 	event_data = get_from_pickle(event_data_pickle)
 	
 	

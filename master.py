@@ -1,5 +1,4 @@
-#TODO:
-#add Baseball as there are games everyday in the summer- good data!
+#TODO: add Baseball as there are games everyday in the summer
 
 #Author: Xavier Boudreau
 import urllib.request
@@ -48,7 +47,6 @@ def combine_events(old_events, new_events):
 	for event_str in new_events:
 		if event_str in old_events:
 			#some of the odds may have been updated since we last checked
-			#add these new odds to the game
 			old_events[event_str].combine_odds(new_events[event_str])
 		else:
 			#we haven't seen this game before, add it to the events that will occur
@@ -79,11 +77,7 @@ def print_results_from_soccerway(url):
 		
 	table_body = soup.find("table", class_ = "matches ").find_next("tbody")
 	
-	#keep track of when games were played, update when a row has a timestamp in it
 	game_date = None
-	
-	#current_tag = table_body
-	
 	
 	row_tag = table_body.find_next("tr")
 	
@@ -125,10 +119,7 @@ def update_results_with_soccerway(url, events, events_with_results, naming_stand
 	table_body = soup.find("table", class_ = "matches ").find_next("tbody")
 	
 	#keep track of when games were played, update when a row has a timestamp in it
-	game_date = None
-	
-	#current_tag = table_body
-	
+	game_date = None	
 	
 	row_tag = table_body.find_next("tr")
 	
@@ -138,13 +129,7 @@ def update_results_with_soccerway(url, events, events_with_results, naming_stand
 	while row_tag != None:
 		try:
 			unix_timestamp = int(row_tag["data-timestamp"])
-			#game_datetime = pytz.utc.localize(datetime.datetime.fromtimestamp(unix_timestamp))
-			#for not found games, soccerway has the correct time
-			#	Real Salt Lake vs. Chicago Fire was at 22:00 EDT, Oddshark said 4pm
-			#	Houston Dynamo vs SKC was at 21:00 EDT, Oddshark said 4pm
-			#	Montreal Impact vs. D.C. United was at 19:30, Oddshark said 4pm
-			#	Same for 3 other games
-			#	It looks like we have a problem with oddsharks times incorrectly becoming 4pm!!!
+			
 			game_datetime = datetime.datetime.fromtimestamp(unix_timestamp)
 			timezone = time.tzname[time.localtime().tm_isdst]
 			NYC = pytz.timezone("America/New_York")
@@ -176,24 +161,17 @@ def update_results_with_soccerway(url, events, events_with_results, naming_stand
 				events[key].result = score_str
 				events_with_results[key] = events[key]
 				del events[key]
-				#print("added one result:\n\t{}\n\tResult: {}\tUNIX: {}".format(key, score_str, unix_timestamp))
+
 			except KeyError:
-				#print("Game not found:\n\t{}\n\tResult: {}\tUNIX: {}".format(key, score_str, unix_timestamp))
+				#Game not found
 				pass
 			row_tag = team_b_tag.find_next("tr")
 		except KeyError:
-			#print(row_tag)
 			row_tag = row_tag.find_next("tr")
 
 def compare_results_to_offered_odds(events_with_results):
 	#evaluate whether the bets offered for each game are winners or not
 	for event in events_with_results:
-		'''
-		print("\n")
-		print(events_with_results[event])
-		for odds in events_with_results[event].odds_set:
-			print(odds)
-		'''
 		events_with_results[event].update_winning_bets()
 
 def pull_oddshark(url, naming_standard):
@@ -224,11 +202,12 @@ def pull_oddshark(url, naming_standard):
 
 	team_tags = soup.find_all("span", class_ = "op-matchup-team-text")
 	events_on_page = []
+	
 	#find all of the betting events on this page
 	for i in range(0,len(team_tags),2):
 		#form a date time object that represents the start of this event
 		date_tag = team_tags[i].find_previous("div", class_ = "op-separator-bar op-left no-group-name")
-		#time_tag = date_tag.find_next("div", class_ = "op-matchup-time op-matchup-text")
+
 		time_tag = team_tags[i].find_previous("div", class_ = "op-matchup-time op-matchup-text")
 		
 		hour, minute = get_int_time(time_tag.text.strip())
@@ -344,12 +323,7 @@ def refresh_EPL_data(events_to_occur_pickle, occured_events_pickle, evaluated_ev
 	events_to_occur =  get_from_pickle(events_to_occur_pickle)
 	EPL_Standard = get_from_pickle(EPL_standard_pickle)
 	new_events = pull_oddshark(oddshark_url, EPL_Standard)
-	'''
-	print("ODDS SEEN\n")
-	for event in new_events:
-		print(new_events[event])
-	print("\n")
-	'''
+	
 	#compare newly scraped odds to stored odds, adding them to the dataset if they
 	#aren't present
 	if events_to_occur != None:
@@ -364,19 +338,9 @@ def refresh_EPL_data(events_to_occur_pickle, occured_events_pickle, evaluated_ev
 	#get the results of games from the internet
 	#when a game has a result, add it to events_with results for later
 	update_results_with_soccerway(soccerway_url, events_to_occur, events_with_results, EPL_Standard)
-	'''
-	print("\nALL EVENTS:\n")
-	for event in events_to_occur:
-		print(events_to_occur[event])
-	for event in events_with_results:
-		print(events_with_results[event])
-	'''
 	
 	save_to_pickle(events_to_occur, events_to_occur_pickle)
 	save_to_pickle(events_with_results, occured_events_pickle)
-	
-	
-	#evaluate the stored odds compared to the results
 	
 	compare_results_to_offered_odds(events_with_results)
 	
